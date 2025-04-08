@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #v1 Add `JsonHandler`.
 - #v1 Add `training.Checkpointer`.
+- #v1 Add checkpointables support for `training.Checkpointer`.
 
 ### Added
 
