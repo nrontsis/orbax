@@ -33,7 +33,11 @@ import jax
 from jax import numpy as jnp
 import numpy as np
 import optax
+from orbax.checkpoint import args as args_lib
 from orbax.checkpoint import test_utils
+from orbax.checkpoint._src.checkpointers import checkpointer as v0_checkpointer
+from orbax.checkpoint._src.checkpointers import standard_checkpointer
+from orbax.checkpoint._src.handlers import composite_checkpoint_handler
 from orbax.checkpoint._src.path import atomicity
 from orbax.checkpoint._src.serialization import serialization
 from orbax.checkpoint._src.tree import utils as tree_utils
@@ -624,9 +628,7 @@ class SaveLoadTestBase:
       self.enter_context(
           ocp.Context(checkpointables_options=checkpointables_options)
       )
-      ocp.save_checkpointables(
-          directory, checkpointables
-      )
+      ocp.save_checkpointables(directory, checkpointables)
       self.assertTrue((directory / 'one' / 'data.txt').exists())
       self.assertFalse((directory / 'two' / 'data.txt').exists())
 
@@ -806,3 +808,104 @@ class SaveLoadTestBase:
             ValueError, 'User-provided restore item and on-disk value'
         ):
           self.load_and_wait(directory, reference_item, use_async=use_async)
+
+    def save_v0_checkpoint(
+        self,
+        directory: Path,
+        checkpointable_name: str,
+        pytree: PyTree,
+        to_checkpointable_subdir: bool = False,
+    ):
+      if to_checkpointable_subdir:
+        with standard_checkpointer.StandardCheckpointer() as checkpointer:
+          checkpointer.save(directory / checkpointable_name, pytree)
+      else:
+        with v0_checkpointer.Checkpointer(
+            composite_checkpoint_handler.CompositeCheckpointHandler()
+        ) as checkpointer:
+          checkpointer.save(
+              directory,
+              args_lib.Composite(
+                  **{checkpointable_name: args_lib.StandardSave(pytree)}
+              ),
+          )
+
+    @parameterized.product(
+        checkpointable_name=['default', 'state'],
+        load_async=[True, False],
+        with_abstract_pytree=[True, False],
+        to_checkpointable_subdir=[True, False],
+    )
+    def test_load_v0_checkpoint_with_v1_load_pytree(
+        self,
+        checkpointable_name: str,
+        load_async: bool,
+        with_abstract_pytree: bool,
+        to_checkpointable_subdir: bool,
+    ):
+      self.save_v0_checkpoint(
+          self.directory,
+          checkpointable_name,
+          self.pytree,
+          to_checkpointable_subdir,
+      )
+
+      if load_async:
+        with self.assertRaises(NotImplementedError):
+          ocp.load_pytree_async(
+              self.directory,
+              self.abstract_pytree if with_abstract_pytree else None,
+          )
+      else:
+        with self.assertRaisesRegex(
+            FileNotFoundError, 'does not contain a PyTree checkpointable'
+        ):
+          ocp.load_pytree(
+              self.directory,
+              self.abstract_pytree if with_abstract_pytree else None,
+          )
+
+    @parameterized.product(
+        checkpointable_name=['default', 'state'],
+        load_async=[True, False],
+        with_abstract_pytree=[True, False],
+        to_checkpointable_subdir=[True, False],
+    )
+    def test_load_v0_checkpoint_with_v1_load_checkpointables(
+        self,
+        checkpointable_name: str,
+        load_async: bool,
+        with_abstract_pytree: bool,
+        to_checkpointable_subdir: bool,
+    ):
+      self.save_v0_checkpoint(
+          self.directory,
+          checkpointable_name,
+          self.pytree,
+          to_checkpointable_subdir,
+      )
+
+      checkpointables_options = (
+          ocp.options.CheckpointablesOptions.create_with_handlers(
+              **{checkpointable_name: ocp.handlers.PyTreeHandler}
+          )
+      )
+      abstract_checkpointables = (
+          {checkpointable_name: self.abstract_pytree}
+          if with_abstract_pytree
+          else None
+      )
+
+      if load_async:
+        with self.assertRaises(NotImplementedError):
+          ocp.load_checkpointables_async(
+              self.directory, abstract_checkpointables
+          )
+      else:
+        with ocp.Context(checkpointables_options=checkpointables_options):
+          loaded = ocp.load_checkpointables(
+              self.directory, abstract_checkpointables
+          )
+          test_utils.assert_tree_equal(
+              self, self.pytree, loaded[checkpointable_name]
+          )

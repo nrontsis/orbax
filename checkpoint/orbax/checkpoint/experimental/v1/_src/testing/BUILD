@@ -6,7 +6,11 @@ py_library(
     deps = [
         ":array_utils",
         ":handler_utils",
+        "//checkpoint/orbax/checkpoint:args",
         "//checkpoint/orbax/checkpoint:test_utils",
+        "//checkpoint/orbax/checkpoint/_src/checkpointers:checkpointer",
+        "//checkpoint/orbax/checkpoint/_src/checkpointers:standard_checkpointer",
+        "//checkpoint/orbax/checkpoint/_src/handlers:composite_checkpoint_handler",
         "//checkpoint/orbax/checkpoint/_src/path:atomicity",
         "//checkpoint/orbax/checkpoint/_src/serialization",
         "//checkpoint/orbax/checkpoint/_src/tree:utils",

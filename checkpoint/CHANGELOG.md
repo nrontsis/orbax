@@ -11,9 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #v1 Add `JsonHandler`.
 - #v1 Add `training.Checkpointer`.
-
-### Added
-
+- #v1 Add compatibility tests for save-by-v0-load-by-v1 and also fix code.
 - `PartsOf` structure which holds a PyTree whose leaf nodes may be missing.
 
 ## [0.11.12] - 2025-04-09
