@@ -1210,7 +1210,7 @@ class CheckpointManager(AbstractCheckpointManager, epy.ContextManager):
       save_kwargs: Optional[Union[SaveParams, Mapping[str, SaveParams]]] = None,
       metrics: Optional[PyTree] = None,
       force: Optional[bool] = False,
-      args: Optional[args_lib.CheckpointArgs] = None,
+      args: Optional[args_lib.Composite] = None,
       custom_metadata: dict[str, Any] | None = None,
   ) -> bool:
     """Saves the provided items.
@@ -1503,7 +1503,7 @@ class CheckpointManager(AbstractCheckpointManager, epy.ContextManager):
           Union[RestoreParams, Mapping[str, RestoreParams]]
       ] = None,
       directory: Optional[epath.PathLike] = None,
-      args: Optional[args_lib.CheckpointArgs] = None,
+      args: Optional[args_lib.Composite] = None,
   ) -> Union[Any, Mapping[str, Any]]:
     """Restores from the given step and provided items.
 

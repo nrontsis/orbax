@@ -600,7 +600,7 @@ class _LocalCheckpointManager(checkpoint_manager.CheckpointManager):
   def save(
       self,
       step: int,
-      args: Optional[args_lib.CheckpointArgs] = None,
+      args: Optional[args_lib.Composite] = None,
       metrics: Optional[PyTree] = None,
       force: Optional[bool] = False,
   ) -> bool:
@@ -964,7 +964,7 @@ class _MultisliceCheckpointManager(
   def save(
       self,
       step: int,
-      args: args_lib.CheckpointArgs,
+      args: args_lib.Composite,
       *,
       force: bool = False,
   ) -> bool:
@@ -989,14 +989,32 @@ class _MultisliceCheckpointManager(
     else:
       logging.info('Maybe saving at step %d (local).', step)
 
-      args = args_lib.Composite(**{
-          _UNNAMED_ITEM_NAME: args,
-          _PROCESS_METADATA_NAME: (
-              process_metadata_checkpoint_handler.ProcessMetadataSaveArgs(
-                  global_mesh=self._global_mesh
-              )
-          ),
-      })
+      # if _UNNAMED_ITEM_NAME not in args.keys():
+      #   raise ValueError(
+      #       f'{_UNNAMED_ITEM_NAME} is a reserved key and should not be'
+      #       ' specified by the user.'
+      #   )
+
+      if isinstance(args, args_lib.Composite):
+        args = args_lib.Composite(**{
+            _UNNAMED_ITEM_NAME: args.get(_UNNAMED_ITEM_NAME),
+            _PROCESS_METADATA_NAME: (
+                process_metadata_checkpoint_handler.ProcessMetadataSaveArgs(
+                    global_mesh=self._global_mesh
+                )
+            ),
+        })
+      else:
+        args = args_lib.Composite(
+            **{
+                _UNNAMED_ITEM_NAME: args,
+                _PROCESS_METADATA_NAME: (
+                    process_metadata_checkpoint_handler.ProcessMetadataSaveArgs(
+                        global_mesh=self._global_mesh
+                    )
+                ),
+            }
+        )
 
       local_saved = self._local_checkpoint_manager.save(
           step, args=args, force=force
@@ -1304,7 +1322,7 @@ class _MultisliceCheckpointManager(
   def restore(
       self,
       step: Optional[int],
-      args: args_lib.CheckpointArgs | None = None,
+      args: args_lib.Composite | None = None,
   ) -> Any:
     del args
     if step is None:
@@ -1521,7 +1539,7 @@ class CheckpointManager(
   def restore(
       self,
       step: int | None,
-      args: args_lib.CheckpointArgs | None = None,
+      args: args_lib.Composite | None = None,
   ) -> Any:
     del args
     args = args_lib.PyTreeRestore(
