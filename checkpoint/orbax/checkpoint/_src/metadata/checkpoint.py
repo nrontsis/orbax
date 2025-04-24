@@ -172,8 +172,8 @@ class _MetadataStoreImpl(MetadataStore):
       metadata: SerializedMetadata,
   ) -> None:
     metadata_file = epath.Path(file_path)
-    if not metadata_file.parent.name or not metadata_file.parent.exists():
-      raise ValueError(f'Metadata path does not exist: {metadata_file.parent}')
+    if not metadata_file.parent.name:
+      raise ValueError(f'Metadata parent name not set')
     json_data = json.dumps(metadata)
     bytes_written = metadata_file.write_text(json_data)
     if bytes_written == 0:
